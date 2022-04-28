@@ -6,14 +6,18 @@ Created on Thu Apr 28 16:04:47 2022
 """
 
 class Enemy() :
-    def __init__(self, pos=(0,0), vis_range=5,  moves=1):
+    def __init__(self, pos=(0,0), vis_range=5, moves=1, symbol='1'):
         self.position = pos
         self.moves = moves
         self.vis_range = vis_range
         self.alive = True
+        self.symbol = symbol
         
     def get_pos(self):
         return self.position
+    
+    def get_symbol(self) :
+        return self.symbol
     
     def kill(self):
         self.alive = False
@@ -58,5 +62,5 @@ class Agent() :
 
     def move(self, direction, g) :
         nu_pos = (self.position[0] + direction[0], self.position[1] + direction[1])
-        if g[nu_pos[0]][nu_pos[1]] == ' ' or g[nu_pos[0]][nu_pos[1]] == '1' or g[nu_pos[0]][nu_pos[1]] == 'O':
+        if g[nu_pos[0]][nu_pos[1]] != '*':
             self.position = nu_pos

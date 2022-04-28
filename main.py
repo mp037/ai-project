@@ -129,7 +129,7 @@ class Game() :
         for enemy in self.enemies :
             if enemy.is_alive() :
                 enemy_pos = enemy.get_pos()
-                g[enemy_pos[0]][enemy_pos[1]] = '1'   
+                g[enemy_pos[0]][enemy_pos[1]] = enemy.get_symbol()  
             
         return g
     
