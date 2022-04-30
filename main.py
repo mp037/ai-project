@@ -146,8 +146,8 @@ class Game() :
         else :
             print('something went wrong')
             return False
-    
-        self.agent.move(direction, self.g)
+
+        self.agent.move(direction, self.g, self.enemies)
         agent_pos = self.agent.get_pos()
         
         if agent_pos == self.goal :
@@ -155,13 +155,16 @@ class Game() :
             return False
         
         for enemy in self.enemies :
+            if enemy.get_lives() == 0:
+                enemy.kill()
+
             if enemy.is_alive() :
                 enemy_pos = enemy.get_pos()
                 if agent_pos == enemy_pos :
                     enemy.kill()
                     continue
                 
-                enemy.move_towards(self.agent.get_pos(), self.g)
+                enemy.move_towards(self.agent.get_pos(), self.g, self.enemies)
                 
                 if agent_pos == enemy.get_pos() :
                     self.agent.kill()
