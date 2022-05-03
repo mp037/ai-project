@@ -1,6 +1,6 @@
 import random
 from math import floor
-from enemy import Enemy, Agent
+from enemy import Enemy1, Enemy2, Enemy3, Agent
 from tabulate import tabulate
 import sys
 from io import StringIO
@@ -65,7 +65,6 @@ class Game() :
         else:
             min_rooms = len(vertical_walls)-1
         r = random.randint(0, min_rooms-1) #number of doors to randomly remove
-        print(r)
         for count in range(r):
             i, j = random.choice(doors)
             g[i][j] = "*"
@@ -108,14 +107,30 @@ class Game() :
                 goal = (i, j)
                 #g[i][j] = "O" #big letter o, not zero
         enemy_agents = []
-        num_enemies = floor(m*n/16)
+        num_enemies = floor(m*n/12)
+        enemies_of_a_type = num_enemies/3
         for count in range(num_enemies):
             i = random.randint(1, m - 2)
             j = random.randint(1, n - 2)
-            while g[i][j] != " " or self.distance(i, j, agent.get_pos()[0], agent.get_pos()[1]) <= 3: #enemies can't be on the goal, fix later?
+            same_pos = False
+            for enemy in enemy_agents:
+                if (i, j) == enemy.get_pos():
+                    same_pos = True
+                    break
+            while g[i][j] != " " or self.distance(i, j, agent.get_pos()[0], agent.get_pos()[1]) <= 3 or (i, j) == goal or same_pos: #enemies can't be on the goal, fix later?
                 i = random.randint(1, m - 2)
                 j = random.randint(1, n - 2)
-            enemy_agents.append(Enemy((i, j), self.vis_range))
+                same_pos = False
+                for enemy in enemy_agents:
+                    if (i, j) == enemy.get_pos():
+                        same_pos = True
+                        break
+            if count < enemies_of_a_type:
+                enemy_agents.append(Enemy1((i, j), self.vis_range))
+            elif count < 2*enemies_of_a_type:
+                enemy_agents.append(Enemy2((i, j), self.vis_range))
+            else:
+                enemy_agents.append(Enemy3((i, j), self.vis_range))
             #g[i][j] = "1"
         return (g, agent, goal, enemy_agents)
     
