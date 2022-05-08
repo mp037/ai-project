@@ -19,30 +19,53 @@ from game import Game
 
 
 class DQN(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size=72):
         super().__init__()
-        self.fc1 = nn.Linear(4, 24)
-        self.fc2 = nn.Linear(24, 48)
-        self.fc3 = nn.Linear(48, 2)
+        #self.fc1 = nn.Linear(2, 24)
+        #self.fc2 = nn.Linear(24, 48)
+        #self.fc3 = nn.Linear(48, 4)
         
-    def forward(self, x):        
+        self.fc1 = nn.Linear(input_size, 192)
+        self.fc2 = nn.Linear(192, 256)
+        self.fc3 = nn.Linear(256, 4)
+        #self.fc4 = nn.Linear(512, 4)
+        
+        
+        #self.lstm = nn.LSTM(input_size, 256, 2, dropout=0.2)
+        #self.fc = nn.Linear(256, 4)
+        
+    def forward(self, x): 
+        
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
         x = F.relu(x)
         x = self.fc3(x)
-    
+        #x = F.relu(x)
+        #x = self.fc4(x)
+        #x = F.softmax(x)
+        
+        
+        #x = self.lstm(x)
+        #x = F.relu(x)
+        #x = self.fc(x)
+        
+        
         return x
     
     
 class DQNCartPoleSolver:
             
-    def __init__(self, n_episodes=1000, n_win_ticks=195, max_env_steps=None, gamma=1.0, epsilon=1.0, epsilon_min=0.01, epsilon_log_decay=0.995, alpha=0.01, alpha_decay=0.01, batch_size=64, monitor=False, quiet=False):
+    def __init__(self, n_episodes=100000, n_win_ticks=195,  gamma=0.99,
+                       epsilon=1.0, epsilon_min=0.2, epsilon_log_decay=0.995,
+                       alpha=0.01, alpha_decay=0.01, batch_size=64,
+                       monitor=False, quiet=False, max_env_steps=None):
         self.memory = deque(maxlen=100000)
-        self.env = gym.make('CartPole-v0')
-        if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
-        #self.env = Game(visualize=False)
-        
+        #self.env = gym.make('CartPole-v0')
+        #if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
+        # TOMOD:: Need to load game
+        self.env = Game(visualize=False, num_enemies=3)
+        self.input_size = 2 + self.env.num_enemies * 2
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
@@ -53,23 +76,26 @@ class DQNCartPoleSolver:
         self.n_win_ticks = n_win_ticks
         self.batch_size = batch_size
         self.quiet = quiet
+        # TOMOD:: max steps?
         if max_env_steps is not None: self.env._max_episode_steps = max_env_steps # Init model
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('Running on : ' + str(self.device))
-        self.dqn = DQN()
+        self.dqn = DQN(self.input_size)
         self.dqn.to(device=self.device)
         self.criterion = torch.nn.MSELoss()
-        self.opt = torch.optim.Adam(self.dqn.parameters(), lr=0.01)
+        self.opt = torch.optim.Adam(self.dqn.parameters(), lr=0.000025)
         
     def get_epsilon(self, t):
         return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
     
     def preprocess_state(self, state):
-        return torch.tensor(np.reshape(state, [1, 4]), dtype=torch.float32)
+        # TOMOD:: state tensor
+        return torch.tensor(np.reshape(state, [1, self.input_size]), dtype=torch.float32)
+        #return torch.tensor(state, dtype=torch.float32)
     
     def choose_action(self, state, epsilon):
         if (np.random.random() <= epsilon):
-            return self.env.action_space.sample() 
+            return random.sample(self.env.action_space, 1)[0]
         else:
             with torch.no_grad():
                 return torch.argmax(self.dqn(state.to(self.device)).cpu()).numpy()
@@ -100,30 +126,54 @@ class DQNCartPoleSolver:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
             
-            
+    def action_to_letter(self, action) :
+        if action == 0 :
+            return 'w'
+        if action == 1 :
+            return 'a'
+        if action == 2 :
+            return 's'
+        if action == 3 :
+            return 'd'
+    
     def run(self):
         scores = deque(maxlen=100)
+        j = 0
         for e in range(self.n_episodes):
+            #actions = []
+            # TOMOD:: env reset? So save initial positions?
             state = self.preprocess_state(self.env.reset())
             done = False
             i = 0
             while not done:
-                if e % 100 == 0 and not self.quiet:
-                    self.env.render()
+                #if e % 100 == 0 and not self.quiet:
+                    # TOMOD:: draw?
+                    #self.env.render()
                 action = self.choose_action(state, self.get_epsilon(e))
-                next_state, reward, done, _ = self.env.step(action)
+                # TOMOD:: do_action returns new state, reward, done
+                #next_state, reward, done, _ = self.env.step(action)
+                next_state, reward, done = self.env.do_action(action)
                 next_state = self.preprocess_state(next_state)
+                i += 1
+                if i > 125 :
+                    done = True
+                    reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
+                #actions.append((self.action_to_letter(action), reward))
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
-                i += 1
-                scores.append(i)
+                if reward == 100:
+                    j += 1
+                #if reward == -100:
+                    #print('Died!')
+            scores.append(i)
+            #print(actions)
             mean_score = np.mean(scores)
-            if mean_score >= self.n_win_ticks and e >= 100:
-                if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
-                return e - 100
+            #if mean_score >= self.n_win_ticks and e >= 100:
+            #    if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
+            #    return e - 100
             if e % 100 == 0 and not self.quiet:
                 print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
-                
+                print('Finished ' + str(j) + ' times')
             self.replay(self.batch_size)
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))
@@ -131,4 +181,4 @@ class DQNCartPoleSolver:
 if __name__ == '__main__':
     agent = DQNCartPoleSolver()
     agent.run()
-    agent.env.close()
+    #agent.env.close()

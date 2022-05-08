@@ -19,7 +19,7 @@ class Enemy() :
     
     def kill(self):
         self.alive = False
-        self.position = (0,0)  # enemies can now move to spaces where previous ones have been killed
+        self.position = (-1, -1)  # enemies can now move to spaces where previous ones have been killed
     
     def is_alive(self) :
         return self.alive
@@ -128,6 +128,9 @@ class Agent() :
         
     def kill(self):
         self.alive = False
+        
+    def distance_to(self, pos):
+        return abs(self.position[0]-pos[0]) + abs(self.position[1]-pos[1])  
     
     def is_alive(self) :
         return self.alive
