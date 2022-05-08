@@ -8,7 +8,7 @@ import copy
 
 
 class Game() :
-    def __init__(self):
+    def __init__(self, visualize=True):
         m=17
         n=24
         wm=2
@@ -17,7 +17,10 @@ class Game() :
         self.g_raw, h, v = self.create_grid(m, n, wm, wn)
         self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
         self.g = self.redraw_map()
-        self.draw()
+        self.visualize = visualize
+        
+        if self.visualize :
+            self.draw()
     
     def generate_walls(self, m, wm):
         good_walls = False
@@ -160,14 +163,14 @@ class Game() :
             direction = (0, 1)
         else :
             print('something went wrong')
-            return False
+            return True
 
         self.agent.move(direction, self.g, self.enemies)
         agent_pos = self.agent.get_pos()
         
         if agent_pos == self.goal :
             print('You won!')
-            return False
+            return True
         
         for enemy in self.enemies :
             if enemy.get_lives() == 0:
@@ -186,30 +189,34 @@ class Game() :
                     print("You lose.")
         
         self.g = self.redraw_map()
-        self.draw()
         
-        return self.agent.is_alive()
+        if self.visualize :
+            self.draw()
+        
+        return not self.agent.is_alive()
         
     
     def draw(self):
         print(tabulate(self.g))
 
-
-game = Game()
-
-run = True
-allowed = ['w', 'a', 's', 'd']
-while(run) :
-    in_key = 'b'
-    while in_key not in allowed :
-        in_key = input()
-        if in_key == 'stop' :
-            run = False
-            break
-        
-    if run :
-        run = game.do_action(in_key)
-
-print('Done.')
-
-
+if __name__ == '__main__':
+    game = Game()
+    
+    done = False
+    allowed = ['w', 'a', 's', 'd']
+    while not done :
+        in_key = 'b'
+        while in_key not in allowed :
+            sys.stdout.flush()
+            in_key = input()
+            in_key = in_key.lower()
+            if in_key == 'stop' :
+                done = True
+                break
+            
+        if not done :
+            done = game.do_action(in_key)
+    
+    print('Done.')
+    
+    
