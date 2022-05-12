@@ -5,19 +5,39 @@ from tabulate import tabulate
 import sys
 from io import StringIO
 import copy
-
+import numpy as np
+import copy
 
 class Game() :
-    def __init__(self):
-        m=17
-        n=24
-        wm=2
-        wn=2
+    def __init__(self, visualize=True, m=10, n=10, wm=0, wn=0, num_enemies=3):
+        self.visualize = visualize
+        self.num_enemies = num_enemies
         self.vis_range = 5
         self.g_raw, h, v = self.create_grid(m, n, wm, wn)
         self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
+        
+        self.og_agent = copy.deepcopy(self.agent)
+        self.og_goal = copy.deepcopy(self.goal)
+        self.og_enemies = copy.deepcopy(self.enemies)
+        
+        
         self.g = self.redraw_map()
-        self.draw()
+        self.action_space = [0, 1, 2, 3]
+        
+        print('Ready.')
+        if self.visualize or True :
+            self.draw()
+            
+            
+    def reset(self) :
+        self.agent = copy.deepcopy(self.og_agent)
+        self.goal = copy.deepcopy(self.og_goal)
+        self.enemies = copy.deepcopy(self.og_enemies)
+        
+        return self.get_state()
+    
+    def distance_coord(self, pos1, pos2):
+        return abs(pos1[0]-pos2[0]) + abs(pos1[1]-pos2[1])  
     
     def generate_walls(self, m, wm):
         good_walls = False
@@ -37,6 +57,9 @@ class Game() :
                 if walls[i] - walls[i - 1] < 5:
                     good_walls = False
                     break
+        if self.visualize :
+            print('Walls generated.')
+            
         return walls
     
     def build_walls(self, g, m, n ,horizontal_walls, vertical_walls):
@@ -77,6 +100,8 @@ class Game() :
         vertical_walls = self.generate_walls(n,wn)
         g = self.build_walls(g, m, n, horizontal_walls, vertical_walls)
         g = self.add_doors(g, m, n, horizontal_walls, vertical_walls)
+        if self.visualize :
+            print('Grid created.')
         return (g, horizontal_walls, vertical_walls)
     
     def distance(self, i1, j1, i2, j2):
@@ -96,6 +121,8 @@ class Game() :
                         agent = Agent((i, j))
                         #g[i][j] = "|"
                         break
+        if self.visualize :
+            print('Agent added.')
         goal_faraway = False
         goal = (0, 0)
         while not goal_faraway:
@@ -107,7 +134,7 @@ class Game() :
                 goal = (i, j)
                 #g[i][j] = "O" #big letter o, not zero
         enemy_agents = []
-        num_enemies = floor(m*n/12)
+        num_enemies = self.num_enemies
         enemies_of_a_type = num_enemies/3
         for count in range(num_enemies):
             i = random.randint(1, m - 2)
@@ -125,13 +152,19 @@ class Game() :
                     if (i, j) == enemy.get_pos():
                         same_pos = True
                         break
+            
+            enemy_agents.append(Enemy1((i, j), self.vis_range))
+            """
             if count < enemies_of_a_type:
                 enemy_agents.append(Enemy1((i, j), self.vis_range))
             elif count < 2*enemies_of_a_type:
                 enemy_agents.append(Enemy2((i, j), self.vis_range))
             else:
                 enemy_agents.append(Enemy3((i, j), self.vis_range))
+            """
             #g[i][j] = "1"
+        if self.visualize :
+            print('Enemies added.')
         return (g, agent, goal, enemy_agents)
     
     def redraw_map(self) :
@@ -148,29 +181,61 @@ class Game() :
             
         return g
     
+    def get_state(self) :
+        state = []
+        agent_pos = self.agent.get_pos()
+        
+        state.append(agent_pos[0])
+        state.append(agent_pos[1])
+        #state.append(self.goal[0])
+        #state.append(self.goal[1])
+        
+        for enemy in self.enemies :
+            enemy_pos = enemy.get_pos()
+            state.append(enemy_pos[0])
+            state.append(enemy_pos[1])
+    
+        return np.array(state)
+    
     def do_action(self, in_key) :
+        done = False
+        
         direction = (0, 0)
-        if in_key == 'w' :
+        if in_key == 'w' or in_key == 0:
             direction = (-1, 0)
-        elif in_key == 's' :
-            direction = (1, 0)
-        elif in_key == 'a' :
+        elif in_key == 'a' or in_key == 1:
             direction = (0, -1)
-        elif in_key == 'd' :
+        elif in_key == 's' or in_key == 2:
+            direction = (1, 0)
+        elif in_key == 'd' or in_key == 3 :
             direction = (0, 1)
         else :
             print('something went wrong')
-            return False
-
+            return self.get_state(), -100, True
+        
+        #old_dist = self.distance_coord(self.goal, self.agent.get_pos())
         self.agent.move(direction, self.g, self.enemies)
         agent_pos = self.agent.get_pos()
+        """
+        nu_dist = self.distance_coord(self.goal, self.agent.get_pos())
+        
+        if old_dist - nu_dist > 0 :
+            reward = 1
+        else:
+            reward = -1
+        """
+        reward = -1
         
         if agent_pos == self.goal :
-            print('You won!')
-            return False
+            if self.visualize:
+                print('You won!')
+            return self.get_state(), 100, True
         
         for enemy in self.enemies :
-            if enemy.get_lives() == 0:
+            if enemy.is_alive() and enemy.get_lives() == 0:
+                reward = 10
+                if self.visualize:
+                    print('Mama! Just killed a man ' + str(enemy.symbol))
                 enemy.kill()
 
             if enemy.is_alive() :
@@ -183,33 +248,39 @@ class Game() :
                 
                 if agent_pos == enemy.get_pos() :
                     self.agent.kill()
-                    print("You lose.")
+                    if self.visualize :
+                        print("You lose.")
+                    reward = -100 - self.agent.distance_to(self.goal) * 10
+                    done = True
         
         self.g = self.redraw_map()
-        self.draw()
         
-        return self.agent.is_alive()
+        if self.visualize :
+            self.draw()
+        
+        return self.get_state(), reward, done
         
     
     def draw(self):
         print(tabulate(self.g))
 
-
-game = Game()
-
-run = True
-allowed = ['w', 'a', 's', 'd']
-while(run) :
-    in_key = 'b'
-    while in_key not in allowed :
-        in_key = input()
-        if in_key == 'stop' :
-            run = False
-            break
-        
-    if run :
-        run = game.do_action(in_key)
-
-print('Done.')
-
-
+if __name__ == '__main__':
+    game = Game(visualize=True)
+    
+    done = False
+    allowed = ['w', 'a', 's', 'd']
+    while not done :
+        in_key = 'b'
+        while in_key not in allowed :
+            sys.stdout.flush()
+            in_key = input()
+            in_key = in_key.lower()
+            if in_key == 'stop' :
+                done = True
+                break
+        if not done :
+            _, _, done = game.do_action(in_key)
+    
+    print('Done.')
+    
+    
