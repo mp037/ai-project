@@ -35,7 +35,9 @@ class DQN(nn.Module):
     
 class DQNCartPoleSolver:
             
-    def __init__(self, n_episodes=1000, n_win_ticks=195, max_env_steps=None, gamma=1.0, epsilon=1.0, epsilon_min=0.01, epsilon_log_decay=0.995, alpha=0.01, alpha_decay=0.01, batch_size=64, monitor=False, quiet=False):
+    def __init__(self, n_episodes=1000, n_win_ticks=195, max_env_steps=None,
+                 gamma=1.0, epsilon=1.0, epsilon_min=0.01, epsilon_log_decay=0.995,
+                 alpha=0.01, alpha_decay=0.01, batch_size=64, monitor=False, quiet=False):
         self.memory = deque(maxlen=100000)
         self.env = gym.make('CartPole-v0')
         if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
@@ -109,7 +111,8 @@ class DQNCartPoleSolver:
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 i += 1
-                scores.append(i)
+            
+            scores.append(i)
             mean_score = np.mean(scores)
             if mean_score >= self.n_win_ticks and e >= 100:
                 if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))

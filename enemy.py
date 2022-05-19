@@ -147,3 +147,7 @@ class Agent() :
                 for enemy in enemies:
                     if enemy.get_pos() == nu_pos:
                         enemy.remove_life()
+                        
+            return 1
+        else :
+            return 0
