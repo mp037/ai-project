@@ -15,6 +15,7 @@ class Game() :
         self.vis_range = 5
         self.g_raw, h, v = self.create_grid(m, n, wm, wn)
         self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
+        self.g_visited = [[0]*len(self.g[0])]*len(self.g)
         
         self.og_agent = copy.deepcopy(self.agent)
         self.og_goal = copy.deepcopy(self.goal)
@@ -224,7 +225,8 @@ class Game() :
         else:
             reward = -1
         """
-        reward = -1
+        reward = (-1)*(self.g_visited[agent_pos[0]][agent_pos[1]]**2)
+        self.g_visited[agent_pos[0]][agent_pos[1]] += 1
         
         if agent_pos == self.goal :
             if self.visualize:
@@ -233,7 +235,7 @@ class Game() :
         
         for enemy in self.enemies :
             if enemy.is_alive() and enemy.get_lives() == 0:
-                reward = 10
+                #reward = 10
                 if self.visualize:
                     print('Mama! Just killed a man ' + str(enemy.symbol))
                 enemy.kill()
@@ -250,7 +252,7 @@ class Game() :
                     self.agent.kill()
                     if self.visualize :
                         print("You lose.")
-                    reward = -100 - self.agent.distance_to(self.goal) * 10
+                    reward = -100 #- self.agent.distance_to(self.goal) * 10
                     done = True
         
         self.g = self.redraw_map()

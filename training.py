@@ -9,7 +9,7 @@ Created on Sun May  8 11:56:38 2022
 from collections import deque
 import random
 import math 
-import gym
+#import gym
 import numpy as np
 import torch
 import torch.nn as nn
