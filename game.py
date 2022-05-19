@@ -14,15 +14,27 @@ class Game() :
         self.num_enemies = num_enemies
         self.vis_range = 5
         self.g_raw, h, v = self.create_grid(m, n, wm, wn)
+        
+        self.g_num_raw = np.zeros(self.g_raw.shape)
+        for i in range(self.g_raw.shape[0]) :
+            for j in range(self.g_raw.shape[1]) :
+                if self.g_raw[i, j] == '*' :
+                    self.g_num_raw[i,j] = -1
+                    
         self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
-        self.g_visited = [[0]*len(self.g[0])]*len(self.g)
         
         self.og_agent = copy.deepcopy(self.agent)
         self.og_goal = copy.deepcopy(self.goal)
         self.og_enemies = copy.deepcopy(self.enemies)
         
+        self.m = m
+        self.n = n
+        self.n_crashes = 0
         
         self.g = self.redraw_map()
+        self.g_num = self.redraw_num()
+        self.visits = np.zeros(self.g.shape)
+        
         self.action_space = [0, 1, 2, 3]
         
         print('Ready.')
@@ -34,6 +46,8 @@ class Game() :
         self.agent = copy.deepcopy(self.og_agent)
         self.goal = copy.deepcopy(self.og_goal)
         self.enemies = copy.deepcopy(self.og_enemies)
+        self.visits = np.zeros(self.g.shape)
+        self.n_crashes = 0
         
         return self.get_state()
     
@@ -103,7 +117,7 @@ class Game() :
         g = self.add_doors(g, m, n, horizontal_walls, vertical_walls)
         if self.visualize :
             print('Grid created.')
-        return (g, horizontal_walls, vertical_walls)
+        return (np.array(g), horizontal_walls, vertical_walls)
     
     def distance(self, i1, j1, i2, j2):
         return abs(i1-i2) + abs(j1-j2)
@@ -166,14 +180,43 @@ class Game() :
             #g[i][j] = "1"
         if self.visualize :
             print('Enemies added.')
-        return (g, agent, goal, enemy_agents)
+        return (np.array(g), agent, goal, enemy_agents)
+    
+    def redraw_symbols(self) :
+        g = copy.deepcopy(self.g_raw)
+        agent_pos = self.agent.get_pos()
+        
+        g[agent_pos] = '|'
+        g[self.goal] = 'O'
+        
+        for enemy in self.enemies :
+            if enemy.is_alive() :
+                enemy_pos = enemy.get_pos()
+                g[enemy_pos[0]][enemy_pos[1]] = enemy.get_symbol()  
+            
+        return g
+    
+    def redraw_num(self) :
+        g = copy.deepcopy(self.g_num_raw)
+        agent_pos = self.agent.get_pos()
+        
+        g[self.goal] = 10
+        g[agent_pos] = 6
+        
+        
+        for enemy in self.enemies :
+            if enemy.is_alive() :
+                enemy_pos = enemy.get_pos()
+                g[enemy_pos[0]][enemy_pos[1]] = int(enemy.get_symbol())
+
+        return g
     
     def redraw_map(self) :
         g = copy.deepcopy(self.g_raw)
         agent_pos = self.agent.get_pos()
         
-        g[agent_pos[0]][agent_pos[1]] = '|'
-        g[self.goal[0]][self.goal[1]] = 'O'
+        g[agent_pos] = '|'
+        g[self.goal] = 'O'
         
         for enemy in self.enemies :
             if enemy.is_alive() :
@@ -183,20 +226,53 @@ class Game() :
         return g
     
     def get_state(self) :
+        """
         state = []
-        agent_pos = self.agent.get_pos()
+        
         
         state.append(agent_pos[0])
         state.append(agent_pos[1])
         #state.append(self.goal[0])
         #state.append(self.goal[1])
+        state.append(self.visits[agent_pos])
+        
         
         for enemy in self.enemies :
             enemy_pos = enemy.get_pos()
             state.append(enemy_pos[0])
             state.append(enemy_pos[1])
-    
-        return np.array(state)
+        """
+        """
+        region_size = 9
+        
+        agent_pos = self.agent.get_pos()
+        
+        x, y, w, h = (agent_pos[0], agent_pos[1], region_size, region_size)
+        
+        #x = x - w // 2
+        #y = y - h // 2
+        
+        fixed_size = region_size // 2
+        start_y = abs(min(y - fixed_size, 0))
+        start_x = abs(min(x - fixed_size, 0))
+        
+        cutout_v = np.array(self.visits[x-fixed_size+start_x:x+fixed_size+1, y-fixed_size+start_y:y+fixed_size+1])
+        shape = np.shape(cutout_v)
+
+        visits_state = np.ones((fixed_size * 2 + 1, fixed_size * 2 + 1)) * -4
+        visits_state[start_x:shape[0]+start_x, start_y:shape[1]+start_y] = cutout_v / 4
+        
+        
+        
+        cutout_s = np.array(self.g_num[x-fixed_size+start_x:x+fixed_size+1, y-fixed_size+start_y:y+fixed_size+1])
+        shape = np.shape(cutout_s)
+
+        map_state = np.ones((fixed_size * 2 + 1, fixed_size * 2 + 1)) * -5
+        map_state[start_x:shape[0]+start_x, start_y:shape[1]+start_y] = cutout_s / 5
+        """
+        state = [np.array([self.g_num]), np.array([self.n_crashes])]
+
+        return state
     
     def do_action(self, in_key) :
         done = False
@@ -214,28 +290,45 @@ class Game() :
             print('something went wrong')
             return self.get_state(), -100, True
         
-        #old_dist = self.distance_coord(self.goal, self.agent.get_pos())
-        self.agent.move(direction, self.g, self.enemies)
+        old_dist = self.distance_coord(self.goal, self.agent.get_pos())
+        
+        succ = self.agent.move(direction, self.g, self.enemies)
         agent_pos = self.agent.get_pos()
-        """
+        
         nu_dist = self.distance_coord(self.goal, self.agent.get_pos())
         
         if old_dist - nu_dist > 0 :
-            reward = 1
+            reward = 0.5
         else:
-            reward = -1
+            reward = -1 #* (self.visits[agent_pos] + 1)
         """
-        reward = (-1)*(self.g_visited[agent_pos[0]][agent_pos[1]]**2)
-        self.g_visited[agent_pos[0]][agent_pos[1]] += 1
+        reward = -1
+        if succ == 0 :
+            if self.n_crashes > 0 :
+                reward = -1 * (2 * self.n_crashes)
+                
+            self.n_crashes += 1
+        
+        else :
+            if old_dist - nu_dist > 0 :
+                reward = 0.5
+            else:
+                reward = -1 #* (self.visits[agent_pos] + 1)
+       """
+        
+        #reward = -1
+        
+        self.visits[agent_pos] = 1
         
         if agent_pos == self.goal :
             if self.visualize:
                 print('You won!')
+            self.g_num = self.redraw_num()
             return self.get_state(), 100, True
         
         for enemy in self.enemies :
             if enemy.is_alive() and enemy.get_lives() == 0:
-                #reward = 10
+                reward = 10
                 if self.visualize:
                     print('Mama! Just killed a man ' + str(enemy.symbol))
                 enemy.kill()
@@ -244,6 +337,7 @@ class Game() :
                 enemy_pos = enemy.get_pos()
                 if agent_pos == enemy_pos :
                     enemy.kill()
+                    self.n_crashes -= 1
                     continue
                 
                 enemy.move_towards(self.agent.get_pos(), self.g, self.enemies)
@@ -252,9 +346,10 @@ class Game() :
                     self.agent.kill()
                     if self.visualize :
                         print("You lose.")
-                    reward = -100 #- self.agent.distance_to(self.goal) * 10
+                    reward = -100
                     done = True
         
+        self.g_num = self.redraw_num()
         self.g = self.redraw_map()
         
         if self.visualize :
