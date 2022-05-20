@@ -413,6 +413,7 @@ class Game() :
             self.enemies = []
             
             line = fp.readline().split('\t')
+            print(line)
             while len(line) > 2 :
                 enemy = None
                 enemy_pos = (int(line[0]), int(line[1]))

@@ -98,7 +98,7 @@ class DQNCartPoleSolver:
         m = 16
         n = 16
         load_map = True
-        map_name = 'test_map'
+        map_name = 'test_map7'
         
         self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=map_name)
         m = self.env.m
