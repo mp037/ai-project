@@ -98,7 +98,7 @@ class DQNCartPoleSolver:
         m = 16
         n = 16
         load_map = True
-        map_name = 'test_map4'
+        map_name = 'test_map'
         
         self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=map_name)
         m = self.env.m
@@ -183,6 +183,9 @@ class DQNCartPoleSolver:
     def run(self):
         scores = deque(maxlen=100)
         j = 0
+        k = 0
+        k_prev = 0
+        j_prev = 0
         for e in range(self.n_episodes):
             actions = []
             # TOMOD:: env reset? So save initial positions?
@@ -208,8 +211,8 @@ class DQNCartPoleSolver:
                     #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
                 if reward == 100:
                     j += 1
-                #if reward == -100:
-                    #print('Died!')
+                if reward == 10:
+                    k += 1
             scores.append(i)
             mean_score = np.mean(scores)
             #if mean_score >= self.n_win_ticks and e >= 100:
@@ -218,8 +221,13 @@ class DQNCartPoleSolver:
             if e % 100 == 0:
                 print(actions)
             if e % 100 == 0 and not self.quiet:
+                k_prev = k - k_prev
+                j_prev = j - j_prev
                 print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
-                print('Finished ' + str(j) + ' times')
+                print('Finished ' + str(j) + ' times, up ' + str(j_prev) + ' from last time')
+                print('Killed ' + str(k) + ' enemies, up ' + str(k_prev) + ' from last time')
+                k_prev = k
+                j_prev = j
             self.replay(self.batch_size, e)
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))
