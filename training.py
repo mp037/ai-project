@@ -30,7 +30,7 @@ class DQN(nn.Module):
         #self.fc3 = nn.Linear(512, 1024)
         #self.fc4 = nn.Linear(1024, 4)
         
-        self.conv1 = nn.Conv2d(1, 8, (5,5), padding=2)
+        self.conv1 = nn.Conv2d(4, 8, (5,5), padding=2)
         self.conv2 = nn.Conv2d(8, 16, (5,5), padding=2)
         self.conv3 = nn.Conv2d(16, 24, (3,3), padding=1)
         self.pool = nn.MaxPool2d(2, stride=2)
@@ -43,7 +43,7 @@ class DQN(nn.Module):
         self.fc = nn.Linear(32 * input_size, 4)
         
         
-        self.leaky = nn.LeakyReLU(0.33)
+        self.leaky = nn.LeakyReLU(0.1)
         
         #self.lstm = nn.LSTM(input_size, 256, 2, dropout=0.2)
         #self.fc = nn.Linear(256, 4)
@@ -69,11 +69,11 @@ class DQN(nn.Module):
         x = self.pool(x)
         x = self.conv3(x)
         x = self.leaky(x)
-        x = self.pool(x)
+        #x = self.pool(x)
         x = self.conv4(x)
         x = self.leaky(x)
-        x = torch.concat((torch.flatten(x, 1), crashes), dim=-1)
-        #x = torch.flatten(x, 1)
+        #x = torch.concat((torch.flatten(x, 1), crashes), dim=-1)
+        x = torch.flatten(x, 1)
         x = self.fc(x)
         
         
@@ -89,7 +89,7 @@ class DQNCartPoleSolver:
             
     def __init__(self, n_episodes=10000, n_win_ticks=195,  gamma=0.95,
                        epsilon=1.0, epsilon_min=0.2, epsilon_log_decay=0.2,
-                       alpha=0.01, alpha_decay=0.01, batch_size=256,
+                       alpha=0.01, alpha_decay=0.3, batch_size=256,
                        monitor=False, quiet=False, max_env_steps=None):
         self.memory = deque(maxlen=2000)
         #self.env = gym.make('CartPole-v0')
@@ -97,8 +97,13 @@ class DQNCartPoleSolver:
         # TOMOD:: Need to load game
         m = 16
         n = 16
-        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0)
-        self.input_size = ((m // 2) // 2) * ((n // 2) // 2)
+        load_map = True
+        map_name = 'test_map4'
+        
+        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=map_name)
+        m = self.env.m
+        n = self.env.n
+        self.input_size = ((m) // 2) * ((n) // 2)
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
@@ -198,7 +203,7 @@ class DQNCartPoleSolver:
                 state = next_state
                 
                 i += 1
-                if i >= 150  :
+                if i >= 200  :
                     done = True
                     #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
                 if reward == 100:

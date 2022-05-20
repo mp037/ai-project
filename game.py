@@ -7,29 +7,36 @@ from io import StringIO
 import copy
 import numpy as np
 import copy
+import os
 
 class Game() :
-    def __init__(self, visualize=True, m=10, n=10, wm=0, wn=0, num_enemies=3):
+    def __init__(self, visualize=True, m=8, n=8, wm=0, wn=0, num_enemies=1, map_name='test_map', load_map=False):
         self.visualize = visualize
         self.num_enemies = num_enemies
         self.vis_range = 5
-        self.g_raw, h, v = self.create_grid(m, n, wm, wn)
         
+        self.m = m
+        self.n = n
+        self.n_crashes = 0
+        
+        if not load_map :
+            self.g_raw, h, v = self.create_grid(m, n, wm, wn)        
+            self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
+            self.write_map(map_name)
+        else :
+            self.read_map(map_name)
+
+            
         self.g_num_raw = np.zeros(self.g_raw.shape)
         for i in range(self.g_raw.shape[0]) :
             for j in range(self.g_raw.shape[1]) :
                 if self.g_raw[i, j] == '*' :
                     self.g_num_raw[i,j] = -1
-                    
-        self.g, self.agent, self.goal, self.enemies = self.add_agents(self.g_raw, m, n)
-        
+        self.g_num_raw[self.goal] = 1
+            
         self.og_agent = copy.deepcopy(self.agent)
         self.og_goal = copy.deepcopy(self.goal)
         self.og_enemies = copy.deepcopy(self.enemies)
-        
-        self.m = m
-        self.n = n
-        self.n_crashes = 0
         
         self.g = self.redraw_map()
         self.g_num = self.redraw_num()
@@ -270,8 +277,18 @@ class Game() :
         map_state = np.ones((fixed_size * 2 + 1, fixed_size * 2 + 1)) * -5
         map_state[start_x:shape[0]+start_x, start_y:shape[1]+start_y] = cutout_s / 5
         """
-        state = [np.array([self.g_num]), np.array([self.n_crashes])]
-
+        
+        enemies = np.zeros(self.g_num.shape)
+        agent   = np.zeros(self.g_num.shape)
+     
+        agent[self.agent.get_pos()] = 1
+        agent[self.goal] = 2
+        
+        for enemy in self.enemies :
+            enemies[enemy.get_pos()] = int(enemy.get_symbol())
+        
+        
+        state = [np.array([self.g_num_raw, agent, enemies, self.visits/10]), np.array([self.n_crashes])]
         return state
     
     def do_action(self, in_key) :
@@ -316,9 +333,9 @@ class Game() :
                 reward = -1 #* (self.visits[agent_pos] + 1)
        """
         
-        #reward = -1
+        reward -= self.visits[agent_pos] * 0.25
         
-        self.visits[agent_pos] = 1
+        self.visits[agent_pos] += 1
         
         if agent_pos == self.goal :
             if self.visualize:
@@ -349,20 +366,86 @@ class Game() :
                     reward = -100
                     done = True
         
-        self.g_num = self.redraw_num()
+        #self.g_num = self.redraw_num()
         self.g = self.redraw_map()
         
         if self.visualize :
             self.draw()
         
         return self.get_state(), reward, done
-        
+    
+    def read_map(self, map_name) :
+        with open(os.path.join('maps', map_name + '.txt'), 'r') as fp :
+            temp_map = []
+            m = 0
+            n = 0
+            
+            line = fp.readline().split('\t')
+            while line[0] != '##\n' :
+                temp_map.append(line[:-1])
+                line = fp.readline().split('\t')
+                
+            m = len(temp_map)
+            n = len(temp_map[0])
+            
+            self.m = m
+            self.n = n
+            
+            self.g_raw = [[" "] * n for i in range(m)]
+            
+            for i, row in enumerate(temp_map) :
+                for j, el in enumerate(row) :
+                    self.g_raw[i][j] = el
+                
+            self.g_raw = np.array(self.g_raw)
+            
+            agent_pos = fp.readline().split('\t')
+            self.agent = Agent((int(agent_pos[0]), int(agent_pos[1])))
+            goal_pos = fp.readline().split('\t')
+            self.goal = (int(goal_pos[0]), int(goal_pos[1]))
+            
+            fp.readline()
+            
+            self.enemies = []
+            
+            line = fp.readline().split('\t')
+            while len(line) > 2 :
+                enemy = None
+                enemy_pos = (int(line[0]), int(line[1]))
+                if line[2] == '1' :
+                    enemy = Enemy1(enemy_pos, self.vis_range)
+                elif line[2] == '2' :
+                    enemy = Enemy2(enemy_pos, self.vis_range)
+                elif line[2] == '3' :
+                    enemy = Enemy3(enemy_pos, self.vis_range)
+            
+                self.enemies.append(enemy)
+                line = fp.readline().split('\t') 
+            
+    
+    def write_map(self, name) :
+        with open(os.path.join('maps', name + '.txt'), 'w') as fp:
+            for row in self.g_raw :
+                for el in row :
+                    fp.write(el + '\t')
+                fp.write('\n')
+                
+            fp.write('##\n')
+            
+            agent_pos = self.agent.get_pos()
+            fp.write(str(agent_pos[0]) + '\t' + str(agent_pos[1]) + '\n')
+            fp.write(str(self.goal[0]) + '\t' + str(self.goal[1]))
+            fp.write('\n##\n')
+            for enemy in self.enemies :
+                enemy_pos = enemy.get_pos()
+                fp.write(str(enemy_pos[0]) + '\t' + str(enemy_pos[1]) + '\t' + enemy.get_symbol())
+                fp.write('\t\n')
     
     def draw(self):
         print(tabulate(self.g))
 
 if __name__ == '__main__':
-    game = Game(visualize=True)
+    game = Game(visualize=True, load_map=False, map_name='test_map2', m = 8, n = 8, wn=0, num_enemies = 1)
     
     done = False
     allowed = ['w', 'a', 's', 'd']
