@@ -111,7 +111,6 @@ class DQNCartPoleSolver:
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 i += 1
-            
             scores.append(i)
             mean_score = np.mean(scores)
             if mean_score >= self.n_win_ticks and e >= 100:

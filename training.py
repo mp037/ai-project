@@ -41,6 +41,7 @@ class DQN(nn.Module):
         #self.fc = nn.Linear(288, 4)
         #self.fc = nn.Linear(512, 4)
         self.fc = nn.Linear(32 * input_size, 4)
+
         
         
         self.leaky = nn.LeakyReLU(0.33)
@@ -72,8 +73,8 @@ class DQN(nn.Module):
         x = self.pool(x)
         x = self.conv4(x)
         x = self.leaky(x)
-        x = torch.concat((torch.flatten(x, 1), crashes), dim=-1)
-        #x = torch.flatten(x, 1)
+        #x = torch.concat((torch.flatten(x, 1), crashes), dim=-1)
+        x = torch.flatten(x, 1)
         x = self.fc(x)
         
         
@@ -89,15 +90,15 @@ class DQNCartPoleSolver:
             
     def __init__(self, n_episodes=10000, n_win_ticks=195,  gamma=0.95,
                        epsilon=1.0, epsilon_min=0.2, epsilon_log_decay=0.2,
-                       alpha=0.01, alpha_decay=0.01, batch_size=256,
+                       alpha=0.01, alpha_decay=0.3, batch_size=256,
                        monitor=False, quiet=False, max_env_steps=None):
         self.memory = deque(maxlen=2000)
         #self.env = gym.make('CartPole-v0')
         #if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
         # TOMOD:: Need to load game
-        m = 16
-        n = 16
-        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0)
+        m = 10
+        n = 10
+        self.env = Game(visualize=False, m=m, n=n, wm=0, wn=0, num_enemies=2)
         self.input_size = ((m // 2) // 2) * ((n // 2) // 2)
         self.gamma = gamma
         self.epsilon = epsilon
@@ -178,6 +179,8 @@ class DQNCartPoleSolver:
     def run(self):
         scores = deque(maxlen=100)
         j = 0
+        k = 0
+        l = 0
         for e in range(self.n_episodes):
             actions = []
             # TOMOD:: env reset? So save initial positions?
@@ -203,8 +206,10 @@ class DQNCartPoleSolver:
                     #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
                 if reward == 100:
                     j += 1
-                #if reward == -100:
-                    #print('Died!')
+                elif reward == 10:
+                    k += 1
+                if reward == -100:
+                    l += 1
             scores.append(i)
             mean_score = np.mean(scores)
             #if mean_score >= self.n_win_ticks and e >= 100:
@@ -215,6 +220,8 @@ class DQNCartPoleSolver:
             if e % 100 == 0 and not self.quiet:
                 print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
                 print('Finished ' + str(j) + ' times')
+                print('Killed ' + str(k) + ' enemies')
+                print('Died ' + str(l) + ' times')
             self.replay(self.batch_size, e)
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))

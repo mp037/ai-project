@@ -111,8 +111,10 @@ class Game() :
     
     def create_grid(self, m, n, wm, wn):
         g = [[" "] * n for i in range(m)] #creates a m*n table
-        horizontal_walls = self.generate_walls(m,wm) #returns a list of indexes for the horizontal walls
-        vertical_walls = self.generate_walls(n,wn)
+        #horizontal_walls = self.generate_walls(m,wm) #returns a list of indexes for the horizontal walls
+        #vertical_walls = self.generate_walls(n,wn)
+        horizontal_walls = self.generate_walls(m, 0)  # returns a list of indexes for the horizontal walls
+        vertical_walls = self.generate_walls(n, 0)
         g = self.build_walls(g, m, n, horizontal_walls, vertical_walls)
         g = self.add_doors(g, m, n, horizontal_walls, vertical_walls)
         if self.visualize :
@@ -296,11 +298,13 @@ class Game() :
         agent_pos = self.agent.get_pos()
         
         nu_dist = self.distance_coord(self.goal, self.agent.get_pos())
-        
+
+
         if old_dist - nu_dist > 0 :
             reward = 0.5
         else:
             reward = -1 #* (self.visits[agent_pos] + 1)
+
         """
         reward = -1
         if succ == 0 :
