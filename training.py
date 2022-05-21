@@ -91,16 +91,17 @@ class DQNCartPoleSolver:
                        epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.2,
                        alpha=0.01, alpha_decay=0.3, batch_size=256,
                        monitor=False, quiet=False, max_env_steps=None):
-        self.memory = deque(maxlen=2000)
+        self.memory = deque(maxlen=4000)
         #self.env = gym.make('CartPole-v0')
         #if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
         # TOMOD:: Need to load game
         m = 16
         n = 16
         load_map = True
-        map_name = 'test_map7'
+        self.map_name = 'test_map3'
+        self.max_steps = 50
         
-        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=map_name)
+        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=self.map_name)
         m = self.env.m
         n = self.env.n
         self.input_size = ((m) // 2) * ((n) // 2)
@@ -123,6 +124,9 @@ class DQNCartPoleSolver:
         self.criterion = torch.nn.MSELoss()
         self.opt = torch.optim.Adam(self.dqn.parameters(), lr=0.00025 )
         
+    def save_model(self) :
+        torch.save(self.dqn.state_dict(), 'model/' + self.map_name)
+    
     def get_epsilon(self, t):
         return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
     
@@ -206,7 +210,7 @@ class DQNCartPoleSolver:
                 state = next_state
                 
                 i += 1
-                if i >= 200  :
+                if i >= self.max_steps  :
                     done = True
                     #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
                 if reward == 100:
@@ -220,6 +224,7 @@ class DQNCartPoleSolver:
             #    return e - 100
             if e % 100 == 0:
                 print(actions)
+                self.save_model()
             if e % 100 == 0 and not self.quiet:
                 k_prev = k - k_prev
                 j_prev = j - j_prev
@@ -235,4 +240,5 @@ class DQNCartPoleSolver:
 if __name__ == '__main__':
     agent = DQNCartPoleSolver()
     agent.run()
+    agent.save_model()
     #agent.env.close()
