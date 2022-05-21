@@ -320,7 +320,7 @@ class Game() :
         if old_dist - nu_dist > 0 :
             reward = 0.5
         else:
-            reward = -1 #* (self.visits[agent_pos] + 1)
+            reward = -1 - (self.visits[agent_pos] * 0.25)
 
         """
         reward = -1
@@ -337,7 +337,7 @@ class Game() :
                 reward = -1 #* (self.visits[agent_pos] + 1)
        """
         
-        reward -= self.visits[agent_pos] * 0.25
+        #reward -= self.visits[agent_pos] * 0.25
         
         self.visits[agent_pos] += 1
         

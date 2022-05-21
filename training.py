@@ -14,6 +14,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import os
 
 from game import Game
 
@@ -88,7 +89,7 @@ class DQN(nn.Module):
 class DQNCartPoleSolver:
             
     def __init__(self, n_episodes=10000, n_win_ticks=195,  gamma=0.95,
-                       epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.2,
+                       epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.9,
                        alpha=0.01, alpha_decay=0.3, batch_size=256,
                        monitor=False, quiet=False, max_env_steps=None):
         self.memory = deque(maxlen=4000)
@@ -98,8 +99,8 @@ class DQNCartPoleSolver:
         m = 16
         n = 16
         load_map = True
-        self.map_name = 'test_map3'
-        self.max_steps = 50
+        self.map_name = 'test_map5'
+        self.max_steps = 100
         
         self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=self.map_name)
         m = self.env.m
@@ -190,50 +191,58 @@ class DQNCartPoleSolver:
         k = 0
         k_prev = 0
         j_prev = 0
-        for e in range(self.n_episodes):
-            actions = []
-            # TOMOD:: env reset? So save initial positions?
-            state = self.preprocess_state(self.env.reset())
-            done = False
-            i = 0
-            while not done:
-                #if e % 100 == 0 and not self.quiet:
-                    # TOMOD:: draw?
-                    #self.env.render()
-                action = self.choose_action(state, self.get_epsilon(e))
-                # TOMOD:: do_action returns new state, reward, done
-                #next_state, reward, done, _ = self.env.step(action)
-                next_state, reward, done = self.env.do_action(action)
-                next_state = self.preprocess_state(next_state)
-                actions.append((self.action_to_letter(action), reward))
-                self.remember(state, action, reward, next_state, done)
-                state = next_state
-                
-                i += 1
-                if i >= self.max_steps  :
-                    done = True
-                    #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
-                if reward == 100:
-                    j += 1
-                if reward == 10:
-                    k += 1
-            scores.append(i)
-            mean_score = np.mean(scores)
-            #if mean_score >= self.n_win_ticks and e >= 100:
-            #    if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
-            #    return e - 100
-            if e % 100 == 0:
-                print(actions)
-                self.save_model()
-            if e % 100 == 0 and not self.quiet:
-                k_prev = k - k_prev
-                j_prev = j - j_prev
-                print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
-                print('Finished ' + str(j) + ' times, up ' + str(j_prev) + ' from last time')
-                print('Killed ' + str(k) + ' enemies, up ' + str(k_prev) + ' from last time')
-                k_prev = k
-                j_prev = j
-            self.replay(self.batch_size, e)
+        j_max = 0
+        res_list = []
+        with open(os.path.join('model/results', self.map_name + '.txt'), 'w') as fp :
+            for e in range(self.n_episodes):
+                actions = []
+                # TOMOD:: env reset? So save initial positions?
+                state = self.preprocess_state(self.env.reset())
+                done = False
+                i = 0
+                while not done:
+                    #if e % 100 == 0 and not self.quiet:
+                        # TOMOD:: draw?
+                        #self.env.render()
+                    action = self.choose_action(state, self.get_epsilon(e))
+                    # TOMOD:: do_action returns new state, reward, done
+                    #next_state, reward, done, _ = self.env.step(action)
+                    next_state, reward, done = self.env.do_action(action)
+                    next_state = self.preprocess_state(next_state)
+                    actions.append((self.action_to_letter(action), reward))
+                    self.remember(state, action, reward, next_state, done)
+                    state = next_state
+                    
+                    i += 1
+                    if i >= self.max_steps  :
+                        done = True
+                        #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
+                    if reward == 100:
+                        j += 1
+                    if reward == 10:
+                        k += 1
+                scores.append(i)
+                mean_score = np.mean(scores)
+                #if mean_score >= self.n_win_ticks and e >= 100:
+                #    if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
+                #    return e - 100
+                if e % 100 == 0:
+                    print(actions)
+                    k_prev = k - k_prev
+                    j_prev = j - j_prev
+                    print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
+                    print('Finished ' + str(j) + ' times, up ' + str(j_prev) + ' from last time')
+                    print('Killed ' + str(k) + ' enemies, up ' + str(k_prev) + ' from last time')
+                    k_prev = k
+                    j_prev = j
+                    
+                    res_list.append((j_prev, k_prev))
+                    fp.write(str(j_prev) + '\t' + str(k_prev) + '\n')
+                    
+                    if j_prev >= j_max :
+                        self.save_model()
+                    
+                self.replay(self.batch_size, e)
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))
         return e
