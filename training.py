@@ -88,7 +88,7 @@ class DQN(nn.Module):
 class DQNCartPoleSolver:
             
     def __init__(self, n_episodes=10000, n_win_ticks=195,  gamma=0.95,
-                       epsilon=1.0, epsilon_min=0.2, epsilon_log_decay=0.2,
+                       epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.2,
                        alpha=0.01, alpha_decay=0.3, batch_size=256,
                        monitor=False, quiet=False, max_env_steps=None):
         self.memory = deque(maxlen=2000)
