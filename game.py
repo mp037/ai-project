@@ -369,6 +369,7 @@ class Game() :
                         print("You lose.")
                     reward = -100
                     done = True
+                    return self.get_state(), reward, done
         
         #self.g_num = self.redraw_num()
         self.g = self.redraw_map()
