@@ -451,7 +451,7 @@ class Game() :
         print(tabulate(self.g))
 
 if __name__ == '__main__':
-    game = Game(visualize=True, load_map=False, map_name='test_map2', m = 8, n = 8, wn=0, num_enemies = 1)
+    game = Game(visualize=True, load_map=True, map_name='bruce_lee', m = 8, n = 8, wn=0, num_enemies = 1)
     
     done = False
     allowed = ['w', 'a', 's', 'd']
@@ -468,5 +468,4 @@ if __name__ == '__main__':
             _, _, done = game.do_action(in_key)
     
     print('Done.')
-    
     

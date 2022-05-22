@@ -31,17 +31,17 @@ class DQN(nn.Module):
         #self.fc3 = nn.Linear(512, 1024)
         #self.fc4 = nn.Linear(1024, 4)
         
-        self.conv1 = nn.Conv2d(4, 8, (5,5), padding=2)
-        self.conv2 = nn.Conv2d(8, 16, (5,5), padding=2)
-        self.conv3 = nn.Conv2d(16, 24, (3,3), padding=1)
+        self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
+        self.conv2 = nn.Conv2d(16, 32, (5,5), padding=2)
+        self.conv3 = nn.Conv2d(32, 48, (3,3), padding=1)
         self.pool = nn.MaxPool2d(2, stride=2)
-        self.conv4 = nn.Conv2d(24, 32, (3,3), padding=1)
+        self.conv4 = nn.Conv2d(48, 64, (3,3), padding=1)
         #self.conv4 = nn.Conv2d(24, 32, (5,5))
         
         #self.fc = nn.Linear(128, 4)
         #self.fc = nn.Linear(288, 4)
         #self.fc = nn.Linear(512, 4)
-        self.fc = nn.Linear(32 * input_size, 4)
+        self.fc = nn.Linear(64 * input_size, 4)
         
         
         self.leaky = nn.LeakyReLU(0.1)
@@ -88,18 +88,18 @@ class DQN(nn.Module):
     
 class DQNCartPoleSolver:
             
-    def __init__(self, n_episodes=10000, n_win_ticks=195,  gamma=0.95,
+    def __init__(self, n_episodes=30000, n_win_ticks=195,  gamma=0.95,
                        epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.9,
-                       alpha=0.01, alpha_decay=0.3, batch_size=256,
+                       alpha=0.01, alpha_decay=0.3, batch_size=128,
                        monitor=False, quiet=False, max_env_steps=None):
-        self.memory = deque(maxlen=4000)
+        self.memory = deque(maxlen=2000)
         #self.env = gym.make('CartPole-v0')
         #if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
         # TOMOD:: Need to load game
         m = 16
         n = 16
         load_map = True
-        self.map_name = 'test_map5'
+        self.map_name = 'bruce_lee'
         self.max_steps = 100
         
         self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=self.map_name)
@@ -233,15 +233,16 @@ class DQNCartPoleSolver:
                     print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
                     print('Finished ' + str(j) + ' times, up ' + str(j_prev) + ' from last time')
                     print('Killed ' + str(k) + ' enemies, up ' + str(k_prev) + ' from last time')
+                    
+                    if j_prev >= j_max :
+                        self.save_model()
+                        j_max = j_prev
+                        
                     k_prev = k
                     j_prev = j
                     
                     res_list.append((j_prev, k_prev))
                     fp.write(str(j_prev) + '\t' + str(k_prev) + '\n')
-                    
-                    if j_prev >= j_max :
-                        self.save_model()
-                    
                 self.replay(self.batch_size, e)
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))
