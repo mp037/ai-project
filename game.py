@@ -335,9 +335,10 @@ class Game() :
                 reward = 0.5
             else:
                 reward = -1 #* (self.visits[agent_pos] + 1)
-       """
+        """
+
         
-        #reward -= self.visits[agent_pos] * 0.25
+        #reward = -1 - self.visits[agent_pos] * 0.25
         
         self.visits[agent_pos] += 1
         
@@ -451,7 +452,7 @@ class Game() :
         print(tabulate(self.g))
 
 if __name__ == '__main__':
-    game = Game(visualize=True, load_map=True, map_name='bruce_lee', m = 8, n = 8, wn=0, num_enemies = 1)
+    game = Game(visualize=True, load_map=False, map_name='empty_map2', m = 8, n = 8, wn=0, num_enemies = 0)
     
     done = False
     allowed = ['w', 'a', 's', 'd']

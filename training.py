@@ -49,7 +49,7 @@ class DQN(nn.Module):
         #self.lstm = nn.LSTM(input_size, 256, 2, dropout=0.2)
         #self.fc = nn.Linear(256, 4)
         
-    def forward(self, x, crashes): 
+    def forward(self, x): 
         """
         x = self.fc1(x)
         x = F.relu(x)
@@ -86,23 +86,17 @@ class DQN(nn.Module):
         return x
     
     
-class DQNCartPoleSolver:
+class DQNRoomSolverTraining:
             
-    def __init__(self, n_episodes=30000, n_win_ticks=195,  gamma=0.95,
+    def __init__(self, n_episodes=30000, gamma=0.95, batch_size=128,
                        epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.9,
-                       alpha=0.01, alpha_decay=0.3, batch_size=128,
-                       monitor=False, quiet=False, max_env_steps=None):
+                       map_name='empty_map'):
         self.memory = deque(maxlen=2000)
-        #self.env = gym.make('CartPole-v0')
-        #if monitor: self.env = gym.wrappers.Monitor(self.env, '../data/cartpole-1', force=True)
-        # TOMOD:: Need to load game
-        m = 16
-        n = 16
-        load_map = True
-        self.map_name = 'bruce_lee'
+
+        self.map_name = map_name
         self.max_steps = 100
         
-        self.env = Game(visualize=False, m=m, n=n, wm=1, wn=1, num_enemies=0, load_map=load_map, map_name=self.map_name)
+        self.env = Game(visualize=False, load_map=True, map_name=self.map_name)
         m = self.env.m
         n = self.env.n
         self.input_size = ((m) // 2) * ((n) // 2)
@@ -110,14 +104,10 @@ class DQNCartPoleSolver:
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_log_decay
-        self.alpha = alpha
-        self.alpha_decay = alpha_decay
+        
         self.n_episodes = n_episodes
-        self.n_win_ticks = n_win_ticks
         self.batch_size = batch_size
-        self.quiet = quiet
-        # TOMOD:: max steps?
-        if max_env_steps is not None: self.env._max_episode_steps = max_env_steps # Init model
+        
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('Running on : ' + str(self.device))
         self.dqn = DQN(self.input_size)
@@ -132,35 +122,27 @@ class DQNCartPoleSolver:
         return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
     
     def preprocess_state(self, state):
-        # TOMOD:: state tensor
-        #return torch.tensor(np.reshape(state, [1, self.input_size]), dtype=torch.float32)
-        return [torch.tensor(np.array([state[0]]), dtype=torch.float32),
-                torch.tensor(np.array([state[1]]), dtype=torch.float32)]
+        return [torch.tensor(np.array([state[0]]), dtype=torch.float32)]
     
     def choose_action(self, state, epsilon):
         if (np.random.random() <= epsilon):
             return random.sample(self.env.action_space, 1)[0]
         else:
             with torch.no_grad():
-                return torch.argmax(self.dqn(state[0].to(self.device), state[1].to(self.device)).cpu()).numpy()
+                return torch.argmax(self.dqn(state[0].to(self.device)).cpu()).numpy()
             
     def remember(self, state, action, reward, next_state, done):
         reward = torch.tensor(reward)
         self.memory.append((state, action, reward, next_state, done))
     
     def replay(self, batch_size, e):
-        
-        #if (e+1) % 100 == 0 :
-        #    self.target_network.load_state_dict(self.agent_network.state_dict())
-        #    self.target_network.eval()
-        
         y_batch, y_target_batch = [], []
         minibatch = random.sample(self.memory, min(len(self.memory), batch_size))
         for state, action, reward, next_state, done in minibatch:
-            y = self.dqn(state[0].to(self.device), state[1].to(self.device))
+            y = self.dqn(state[0].to(self.device))
             y_target = y.clone().detach()
             with torch.no_grad():
-                y_target[0][action] = reward if done else reward + self.gamma * torch.max(self.dqn(next_state[0].to(self.device), next_state[1].to(self.device))[0])
+                y_target[0][action] = reward if done else reward + self.gamma * torch.max(self.dqn(next_state[0].to(self.device))[0])
             y_batch.append(y[0])
             y_target_batch.append(y_target[0])
         
@@ -196,17 +178,11 @@ class DQNCartPoleSolver:
         with open(os.path.join('model/results', self.map_name + '.txt'), 'w') as fp :
             for e in range(self.n_episodes):
                 actions = []
-                # TOMOD:: env reset? So save initial positions?
                 state = self.preprocess_state(self.env.reset())
                 done = False
                 i = 0
                 while not done:
-                    #if e % 100 == 0 and not self.quiet:
-                        # TOMOD:: draw?
-                        #self.env.render()
                     action = self.choose_action(state, self.get_epsilon(e))
-                    # TOMOD:: do_action returns new state, reward, done
-                    #next_state, reward, done, _ = self.env.step(action)
                     next_state, reward, done = self.env.do_action(action)
                     next_state = self.preprocess_state(next_state)
                     actions.append((self.action_to_letter(action), reward))
@@ -216,16 +192,12 @@ class DQNCartPoleSolver:
                     i += 1
                     if i >= self.max_steps  :
                         done = True
-                        #reward = -100 - self.env.agent.distance_to(self.env.goal) * 10
                     if reward == 100:
                         j += 1
                     if reward == 10:
                         k += 1
                 scores.append(i)
                 mean_score = np.mean(scores)
-                #if mean_score >= self.n_win_ticks and e >= 100:
-                #    if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
-                #    return e - 100
                 if e % 100 == 0:
                     print(actions)
                     k_prev = k - k_prev
@@ -244,11 +216,10 @@ class DQNCartPoleSolver:
                     res_list.append((j_prev, k_prev))
                     fp.write(str(j_prev) + '\t' + str(k_prev) + '\n')
                 self.replay(self.batch_size, e)
-        
-        if not self.quiet: print('Did not solve after {} episodes'.format(e))
+
         return e
 if __name__ == '__main__':
-    agent = DQNCartPoleSolver()
+    agent = DQNRoomSolverTraining(map_name='one_enemy')
     agent.run()
-    agent.save_model()
+    #agent.save_model()
     #agent.env.close()
