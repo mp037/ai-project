@@ -210,11 +210,12 @@ class DQNRoomSolverTraining:
                         self.save_model()
                         j_max = j_prev
                         
+                    res_list.append((j_prev, k_prev))
+                    fp.write(str(j_prev) + '\t' + str(k_prev) + '\n')
+                        
                     k_prev = k
                     j_prev = j
                     
-                    res_list.append((j_prev, k_prev))
-                    fp.write(str(j_prev) + '\t' + str(k_prev) + '\n')
                 self.replay(self.batch_size, e)
 
         return e

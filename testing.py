@@ -26,36 +26,35 @@ from PIL import Image
 
 
 class DQN(nn.Module):
-    def __init__(self, input_size=12):
+    def __init__(self, input_size=12, map_name):
         super().__init__()
         
-        self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
-        self.conv2 = nn.Conv2d(16, 32, (5,5), padding=2)
-        self.conv3 = nn.Conv2d(32, 48, (3,3), padding=1)
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.conv4 = nn.Conv2d(48, 64, (3,3), padding=1)
-
-        self.fc = nn.Linear(64 * input_size, 4)
-        """
         
-        self.conv1 = nn.Conv2d(4, 8, (5,5), padding=2)
-        self.conv2 = nn.Conv2d(8, 16, (5,5), padding=2)
-        self.conv3 = nn.Conv2d(16, 24, (3,3), padding=1)
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.conv4 = nn.Conv2d(24, 32, (3,3), padding=1)
+        if map_name == 'test_map4' :
+            self.conv1 = nn.Conv2d(4, 8, (5,5), padding=2)
+            self.conv2 = nn.Conv2d(8, 16, (5,5), padding=2)
+            self.conv3 = nn.Conv2d(16, 24, (3,3), padding=1)
+            self.pool = nn.MaxPool2d(2, stride=2)
+            self.conv4 = nn.Conv2d(24, 32, (3,3), padding=1)
 
-        self.fc = nn.Linear(32 * input_size, 4)
-        """
-        """
-        
-        self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
-        self.conv2 = nn.Conv2d(16, 24, (5,5), padding=2)
-        self.conv3 = nn.Conv2d(24, 32, (3,3), padding=1)
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.conv4 = nn.Conv2d(32, 48, (3,3), padding=1)
+            self.fc = nn.Linear(32 * input_size, 4)
+        elif map_name == 'three_enemies' :
+            self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
+            self.conv2 = nn.Conv2d(16, 24, (5,5), padding=2)
+            self.conv3 = nn.Conv2d(24, 32, (3,3), padding=1)
+            self.pool = nn.MaxPool2d(2, stride=2)
+            self.conv4 = nn.Conv2d(32, 48, (3,3), padding=1)
 
-        self.fc = nn.Linear(48 * input_size, 4)
-        """
+            self.fc = nn.Linear(48 * input_size, 4)
+        else :
+            self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
+            self.conv2 = nn.Conv2d(16, 32, (5,5), padding=2)
+            self.conv3 = nn.Conv2d(32, 48, (3,3), padding=1)
+            self.pool = nn.MaxPool2d(2, stride=2)
+            self.conv4 = nn.Conv2d(48, 64, (3,3), padding=1)
+    
+            self.fc = nn.Linear(64 * input_size, 4)
+
         
         self.leaky = nn.LeakyReLU(0.1)
         
@@ -92,7 +91,7 @@ class DQNRoomSolver:
         n = self.env.n
         self.input_size = ((m) // 2) * ((n) // 2)
         
-        self.dqn = DQN(self.input_size)
+        self.dqn = DQN(self.input_size, self.map_name)
         self.load_model()
         self.dqn.to(device=self.device)
         
@@ -115,7 +114,46 @@ class DQNRoomSolver:
             return 's'
         if action == 3 :
             return 'd'
-    
+        
+    def plot_training(self) :
+        with open(os.path.join('model/results', self.map_name + '.txt'), 'r') as fp :
+            finishes_list = []
+            kills_list = []
+            
+            prev_finishes = 0
+            prev_kills = 0
+                        
+            lines = fp.readlines()
+            for line in lines :
+                numbers = line.split('\t')
+                
+                finishes = int(numbers[0]) - prev_finishes
+                kills = int(numbers[1]) - prev_kills
+                
+                finishes_list.append(finishes)
+                kills_list.append(kills)
+                
+                prev_finishes = int(numbers[0])
+                prev_kills = int(numbers[1])
+                
+            
+            x = np.linspace(0, len(finishes_list) * 100, len(finishes_list))
+            
+            limit = [100] * len(finishes_list)
+            
+            fig = plt.figure(figsize=(10, 10))
+            plt.plot(x, finishes_list, 'g' , label='# of finishes')
+            plt.plot(x, kills_list, 'r', label='# of kills')
+            plt.plot(x, limit, '--')
+            plt.title('Plot of training results per 100 episodes for ' + self.map_name)
+            plt.ylabel('#')
+            plt.xlabel('episodes')
+            plt.legend()
+            plt.savefig('model/results/' + self.map_name + '_res.png')
+            plt.show()
+            
+                
+            
     def run(self):
         actions = []
         state = self.preprocess_state(self.env.reset())
@@ -163,6 +201,9 @@ class DQNRoomSolver:
         
 
 if __name__ == '__main__':
-    agent = DQNRoomSolver('empty_map', plot=False)
+    agent = DQNRoomSolver('three_enemies', plot=False)
     agent.run()
+    agent.plot_training()
+    
+    
     #agent.env.close()
