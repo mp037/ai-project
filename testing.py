@@ -26,11 +26,11 @@ from PIL import Image
 
 
 class DQN(nn.Module):
-    def __init__(self, input_size=12, map_name):
+    def __init__(self, map_name, input_size=12):
         super().__init__()
         
-        
-        if map_name == 'test_map4' :
+
+        if map_name == 'test_map4' or map_name == 'test_map':
             self.conv1 = nn.Conv2d(4, 8, (5,5), padding=2)
             self.conv2 = nn.Conv2d(8, 16, (5,5), padding=2)
             self.conv3 = nn.Conv2d(16, 24, (3,3), padding=1)
@@ -38,7 +38,7 @@ class DQN(nn.Module):
             self.conv4 = nn.Conv2d(24, 32, (3,3), padding=1)
 
             self.fc = nn.Linear(32 * input_size, 4)
-        elif map_name == 'three_enemies' :
+        elif map_name == 'three_enemies':
             self.conv1 = nn.Conv2d(4, 16, (5,5), padding=2)
             self.conv2 = nn.Conv2d(16, 24, (5,5), padding=2)
             self.conv3 = nn.Conv2d(24, 32, (3,3), padding=1)
@@ -52,7 +52,7 @@ class DQN(nn.Module):
             self.conv3 = nn.Conv2d(32, 48, (3,3), padding=1)
             self.pool = nn.MaxPool2d(2, stride=2)
             self.conv4 = nn.Conv2d(48, 64, (3,3), padding=1)
-    
+
             self.fc = nn.Linear(64 * input_size, 4)
 
         
@@ -91,7 +91,7 @@ class DQNRoomSolver:
         n = self.env.n
         self.input_size = ((m) // 2) * ((n) // 2)
         
-        self.dqn = DQN(self.input_size, self.map_name)
+        self.dqn = DQN(self.map_name, self.input_size)
         self.load_model()
         self.dqn.to(device=self.device)
         
@@ -201,7 +201,7 @@ class DQNRoomSolver:
         
 
 if __name__ == '__main__':
-    agent = DQNRoomSolver('three_enemies', plot=False)
+    agent = DQNRoomSolver('test_map9', plot=False)
     agent.run()
     agent.plot_training()
     
