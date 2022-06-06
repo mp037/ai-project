@@ -118,10 +118,8 @@ class Game() :
     
     def create_grid(self, m, n, wm, wn):
         g = [[" "] * n for i in range(m)] #creates a m*n table
-        #horizontal_walls = self.generate_walls(m,wm) #returns a list of indexes for the horizontal walls
-        #vertical_walls = self.generate_walls(n,wn)
-        horizontal_walls = self.generate_walls(m, 0)  # returns a list of indexes for the horizontal walls
-        vertical_walls = self.generate_walls(n, 0)
+        horizontal_walls = self.generate_walls(m,wm) #returns a list of indexes for the horizontal walls
+        vertical_walls = self.generate_walls(n,wn)
         g = self.build_walls(g, m, n, horizontal_walls, vertical_walls)
         g = self.add_doors(g, m, n, horizontal_walls, vertical_walls)
         if self.visualize :
@@ -452,7 +450,7 @@ class Game() :
         print(tabulate(self.g))
 
 if __name__ == '__main__':
-    game = Game(visualize=True, load_map=False, map_name='empty_map2', m = 8, n = 8, wn=0, num_enemies = 0)
+    game = Game(visualize=True, load_map=False, map_name='4_map', m = 16, n = 16, wn=1, wm=1, num_enemies = 0)
     
     done = False
     allowed = ['w', 'a', 's', 'd']

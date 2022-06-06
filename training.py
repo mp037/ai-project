@@ -88,13 +88,13 @@ class DQN(nn.Module):
     
 class DQNRoomSolverTraining:
             
-    def __init__(self, n_episodes=30000, gamma=0.95, batch_size=128,
+    def __init__(self, n_episodes=30000, gamma=0.95, batch_size=128, 
                        epsilon=1.0, epsilon_min=0.1, epsilon_log_decay=0.9,
-                       map_name='empty_map'):
+                       map_name='empty_map', max_steps=100):
         self.memory = deque(maxlen=2000)
 
         self.map_name = map_name
-        self.max_steps = 100
+        self.max_steps = max_steps
         
         self.env = Game(visualize=False, load_map=True, map_name=self.map_name)
         m = self.env.m
@@ -116,7 +116,7 @@ class DQNRoomSolverTraining:
         self.opt = torch.optim.Adam(self.dqn.parameters(), lr=0.00025 )
         
     def save_model(self) :
-        torch.save(self.dqn.state_dict(), 'model/' + self.map_name)
+        torch.save(self.dqn.state_dict(), 'model/' + self.map_name + '.pt')
     
     def get_epsilon(self, t):
         return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
@@ -220,7 +220,7 @@ class DQNRoomSolverTraining:
 
         return e
 if __name__ == '__main__':
-    agent = DQNRoomSolverTraining(map_name='one_enemy')
+    agent = DQNRoomSolverTraining(map_name='bruce_lee', max_steps=150)
     agent.run()
     #agent.save_model()
     #agent.env.close()

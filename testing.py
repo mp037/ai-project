@@ -26,7 +26,7 @@ from PIL import Image
 
 
 class DQN(nn.Module):
-    def __init__(self, input_size=12, map_name):
+    def __init__(self, input_size=12, map_name='blah'):
         super().__init__()
         
         
